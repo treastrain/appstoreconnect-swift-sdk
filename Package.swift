@@ -11,11 +11,6 @@ var targetDependencies: [Target.Dependency] = [
     .product(name: "Crypto", package: "swift-crypto")
 ]
 
-#if os(Linux)
-dependencies.append(.package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"))
-targetDependencies.append(.product(name: "OpenCombine", package: "OpenCombine"))
-#endif
-
 let package = Package(
     name: "AppStoreConnect-Swift-SDK",
     platforms: [

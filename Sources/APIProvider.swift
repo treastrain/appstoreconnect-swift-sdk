@@ -6,11 +6,6 @@
 //
 
 import Foundation
-#if os(Linux)
-import OpenCombine
-#else
-import Combine
-#endif
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -231,7 +226,8 @@ public final class APIProvider {
     private let encoder: JSONEncoder
     
     /// Exposes rate limit continously as requests are made.
-    public let rateLimitPublisher = PassthroughSubject<RateLimit, Never>()
+    public let rateLimit: AsyncStream<RateLimit>
+    private let rateLimitContinuation: AsyncStream<RateLimit>.Continuation
 
     /// Creates a new APIProvider instance which can be used to perform API Requests to the App Store Connect API.
     ///
@@ -244,6 +240,11 @@ public final class APIProvider {
         self.requestsAuthenticator = JWTRequestsAuthenticator(apiConfiguration: configuration)
         self.encoder = JSONEncoder()
         self.encoder.dateEncodingStrategy = .iso8601
+        (rateLimit, rateLimitContinuation) = AsyncStream.makeStream()
+    }
+
+    deinit {
+        rateLimitContinuation.finish()
     }
 
     /// Performs a data request to the given API endpoint
@@ -333,7 +334,7 @@ private extension APIProvider {
         switch result {
         case .success(let response):
             if let rateLimit = response.rateLimit {
-                rateLimitPublisher.send(rateLimit)
+                rateLimitContinuation.yield(rateLimit)
             }
             
             guard let data = response.data, 200..<300 ~= response.statusCode else {
@@ -363,7 +364,7 @@ private extension APIProvider {
         switch result {
         case .success(let response):
             if let rateLimit = response.rateLimit {
-                rateLimitPublisher.send(rateLimit)
+                rateLimitContinuation.yield(rateLimit)
             }
             
             guard 200..<300 ~= response.statusCode else {
@@ -384,7 +385,7 @@ private extension APIProvider {
         switch result {
         case .success(let response):
             if let rateLimit = response.rateLimit {
-                rateLimitPublisher.send(rateLimit)
+                rateLimitContinuation.yield(rateLimit)
             }
             
             guard 200..<300 ~= response.statusCode else {
